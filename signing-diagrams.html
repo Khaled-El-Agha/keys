@@ -1,0 +1,438 @@
+<title>The Signing Chain</title>
+<style>
+  :root{
+    --bg:#F1F3F6;
+    --surface:#FFFFFF;
+    --surface-2:#E8EBF1;
+    --text:#1A1E27;
+    --text-muted:#5B6274;
+    --border:#D2D7E1;
+    --sign:#B23A2E;
+    --sign-soft:rgba(178,58,46,0.09);
+    --ca:#93721F;
+    --ca-soft:rgba(147,114,31,0.10);
+    --verify:#126F77;
+    --verify-soft:rgba(18,111,119,0.09);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#141822;
+      --surface:#1C222E;
+      --surface-2:#242B3A;
+      --text:#E7E9EE;
+      --text-muted:#98A1B5;
+      --border:#303747;
+      --sign:#E58B7F;
+      --sign-soft:rgba(229,139,127,0.12);
+      --ca:#D8B45C;
+      --ca-soft:rgba(216,180,92,0.12);
+      --verify:#4FC4CE;
+      --verify-soft:rgba(79,196,206,0.12);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141822;
+    --surface:#1C222E;
+    --surface-2:#242B3A;
+    --text:#E7E9EE;
+    --text-muted:#98A1B5;
+    --border:#303747;
+    --sign:#E58B7F;
+    --sign-soft:rgba(229,139,127,0.12);
+    --ca:#D8B45C;
+    --ca-soft:rgba(216,180,92,0.12);
+    --verify:#4FC4CE;
+    --verify-soft:rgba(79,196,206,0.12);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+  }
+  .wrap{max-width:1000px;margin:0 auto;padding:56px 24px 90px;}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin:0 0 14px;
+  }
+  h1{
+    font-size:clamp(30px,4.2vw,42px);
+    font-weight:650;
+    letter-spacing:-0.01em;
+    margin:0 0 16px;
+    text-wrap:balance;
+  }
+  .dek{
+    font-size:16.5px;
+    line-height:1.6;
+    color:var(--text-muted);
+    max-width:640px;
+    margin:0 0 36px;
+  }
+  .dek strong{color:var(--text);font-weight:600;}
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px 22px;
+    padding:14px 18px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    margin-bottom:52px;
+  }
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;}
+  .dot.sign{background:var(--sign);}
+  .dot.ca{background:var(--ca);}
+  .dot.verify{background:var(--verify);}
+
+  section{margin-bottom:68px;}
+  h2{
+    font-size:22px;
+    font-weight:650;
+    margin:0 0 8px;
+    letter-spacing:-0.005em;
+  }
+  .section-intro{
+    font-size:15px;
+    line-height:1.65;
+    color:var(--text-muted);
+    max-width:680px;
+    margin:0 0 28px;
+  }
+  .section-intro strong{color:var(--text);font-weight:600;}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.92em;
+    background:var(--surface-2);
+    padding:1px 5px;
+    border-radius:4px;
+  }
+
+  figure{margin:0;}
+  .figure-frame{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px 16px;
+    overflow-x:auto;
+  }
+  figure svg{display:block;width:100%;height:auto;min-width:720px;}
+  figcaption{
+    font-size:13px;
+    color:var(--text-muted);
+    margin-top:14px;
+    line-height:1.55;
+    max-width:720px;
+  }
+
+  svg text{font-family:'IBM Plex Sans',system-ui,sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .ink{fill:var(--text);}
+  .muted{fill:var(--text-muted);}
+  .c-sign{fill:var(--sign);}
+  .c-ca{fill:var(--ca);}
+  .c-verify{fill:var(--verify);}
+  .bold{font-weight:600;}
+  .semibold{font-weight:550;}
+
+  .box-surface{fill:var(--surface);stroke:var(--border);stroke-width:1.4;}
+  .box-surface2{fill:var(--surface-2);stroke:var(--border);stroke-width:1.4;}
+  .box-sign{fill:var(--sign-soft);stroke:var(--sign);stroke-width:1.6;}
+  .box-ca{fill:var(--ca-soft);stroke:var(--ca);stroke-width:1.6;}
+  .line-neutral{stroke:var(--text-muted);stroke-width:1.5;fill:none;}
+  .line-sign{stroke:var(--sign);stroke-width:2.1;fill:none;}
+  .line-ca{stroke:var(--ca);stroke-width:2.1;fill:none;}
+  .line-verify{stroke:var(--verify);stroke-width:1.6;fill:none;}
+  .line-dash{stroke:var(--border);stroke-width:1.3;fill:none;stroke-dasharray:4,4;}
+  .lbl-bg{fill:var(--surface);}
+
+  .notes{
+    margin:22px 0 0;
+    padding:0;
+    list-style:none;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    max-width:720px;
+  }
+  .notes li{
+    font-size:14px;
+    line-height:1.55;
+    color:var(--text);
+    padding-left:26px;
+    position:relative;
+  }
+  .notes li .num{
+    position:absolute;left:0;top:1px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--verify);
+    font-weight:600;
+  }
+
+  footer{
+    border-top:1px solid var(--border);
+    padding-top:18px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-muted);
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;650&display=swap">
+
+<div class="wrap">
+
+  <p class="eyebrow">PKI notes — companion to SIGNING.md</p>
+  <h1>The Signing Chain</h1>
+  <p class="dek">Signing a file, a CSR, and a certificate are the <strong>same hash-and-sign trick</strong> wearing three different shapes — and an mTLS handshake is where one of those private keys finally gets used <strong>live</strong>, not just once at issuance.</p>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot sign"></span>Signer's own private key</div>
+    <div class="legend-item"><span class="dot ca"></span>The CA's private key</div>
+    <div class="legend-item"><span class="dot verify"></span>A public key, used to verify</div>
+  </div>
+
+  <section>
+    <h2>1 — Three ways to sign</h2>
+    <p class="section-intro">Same pipeline every time: hash the data, then encrypt that hash with a private key. What changes is <strong>whose</strong> private key signs, and whether the signature ends up <strong>beside</strong> the data or <strong>embedded inside</strong> it.</p>
+
+    <figure>
+      <div class="figure-frame">
+        <svg viewBox="0 0 1040 700" role="img" aria-label="Diagram comparing signing a file, a CSR, and a certificate: a file's signature is kept in a separate .sig file, while a CSR and certificate embed the signature inside the same document. The CSR is signed with the subject's own private key; the certificate is signed with the CA's private key instead. All three converge on the same verification check: does the hash of the data match the hash recovered from the signature using the matching public key.">
+
+          <defs>
+            <marker id="arN" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-muted)"/>
+            </marker>
+            <marker id="arS" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--sign)"/>
+            </marker>
+            <marker id="arC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--ca)"/>
+            </marker>
+            <marker id="arV" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--verify)"/>
+            </marker>
+          </defs>
+
+          <!-- column headers -->
+          <text x="190" y="22" text-anchor="middle" class="ink bold" font-size="14">SIGN A FILE</text>
+          <text x="520" y="22" text-anchor="middle" class="ink bold" font-size="14">SIGN A CSR</text>
+          <text x="850" y="22" text-anchor="middle" class="ink bold" font-size="14">SIGN A CERTIFICATE</text>
+
+          <!-- ============ DATA BOXES (y70-220) ============ -->
+          <!-- col1 file -->
+          <rect x="40" y="70" width="300" height="150" rx="7" class="box-surface"/>
+          <text x="190" y="140" text-anchor="middle" class="ink semibold mono" font-size="14">firmware.bin</text>
+          <text x="190" y="162" text-anchor="middle" class="muted" font-size="11">25 bytes of plain content</text>
+
+          <!-- col2 csr data -->
+          <rect x="370" y="70" width="300" height="150" rx="7" class="box-surface"/>
+          <text x="388" y="100" class="muted" font-size="10" letter-spacing="0.06em">SUBJECT</text>
+          <text x="388" y="118" class="ink mono" font-size="12.5">CN=firmware-signer, O=DemoOrg</text>
+          <text x="388" y="150" class="muted" font-size="10" letter-spacing="0.06em">PUBLIC KEY</text>
+          <text x="388" y="168" class="ink mono" font-size="12.5">RSA-2048 — firmware's own key</text>
+          <text x="388" y="200" class="muted" font-size="10.5" font-style="italic">(only this block gets signed)</text>
+
+          <!-- col3 cert data -->
+          <rect x="700" y="70" width="300" height="150" rx="7" class="box-surface"/>
+          <text x="718" y="92" class="muted" font-size="10" letter-spacing="0.06em">ISSUER</text>
+          <text x="718" y="107" class="ink mono" font-size="11.5">CN=Demo Root CA, O=DemoOrg</text>
+          <text x="718" y="128" class="muted" font-size="10" letter-spacing="0.06em">SERIAL + VALIDITY</text>
+          <text x="718" y="143" class="ink mono" font-size="11.5">assigned by the CA</text>
+          <text x="718" y="164" class="muted" font-size="10" letter-spacing="0.06em">SUBJECT · same as CSR</text>
+          <text x="718" y="179" class="ink mono" font-size="11.5">CN=firmware-signer, O=DemoOrg</text>
+          <text x="718" y="200" class="muted" font-size="10" letter-spacing="0.06em">PUBLIC KEY · same as CSR</text>
+          <text x="718" y="215" class="ink mono" font-size="11.5">RSA-2048 — firmware's own key</text>
+
+          <!-- ============ ARROW 1: hash (labelled once, on col2) ============ -->
+          <line x1="190" y1="220" x2="190" y2="260" class="line-neutral" marker-end="url(#arN)"/>
+          <line x1="520" y1="220" x2="520" y2="260" class="line-neutral" marker-end="url(#arN)"/>
+          <line x1="850" y1="220" x2="850" y2="260" class="line-neutral" marker-end="url(#arN)"/>
+          <rect x="462" y="229" width="116" height="18" class="lbl-bg"/>
+          <text x="520" y="242" text-anchor="middle" class="muted mono" font-size="11">SHA-256 hash</text>
+
+          <!-- ============ HASH PILL (y260-300) ============ -->
+          <rect x="120" y="260" width="140" height="40" rx="20" class="box-surface2"/>
+          <text x="190" y="285" text-anchor="middle" class="ink mono" font-size="11.5">hash</text>
+          <rect x="450" y="260" width="140" height="40" rx="20" class="box-surface2"/>
+          <text x="520" y="285" text-anchor="middle" class="ink mono" font-size="11.5">hash</text>
+          <rect x="780" y="260" width="140" height="40" rx="20" class="box-surface2"/>
+          <text x="850" y="285" text-anchor="middle" class="ink mono" font-size="11.5">hash</text>
+
+          <!-- ============ ARROW 2: sign (per-column, key differs) ============ -->
+          <line x1="190" y1="300" x2="190" y2="345" class="line-sign" marker-end="url(#arS)"/>
+          <rect x="112" y="305" width="156" height="17" class="lbl-bg"/>
+          <text x="190" y="317" text-anchor="middle" class="c-sign semibold" font-size="10.5">sign w/ own PRIVATE KEY</text>
+
+          <line x1="520" y1="300" x2="520" y2="345" class="line-sign" marker-end="url(#arS)"/>
+          <rect x="442" y="305" width="156" height="17" class="lbl-bg"/>
+          <text x="520" y="317" text-anchor="middle" class="c-sign semibold" font-size="10.5">sign w/ own PRIVATE KEY</text>
+
+          <line x1="850" y1="300" x2="850" y2="345" class="line-ca" marker-end="url(#arC)"/>
+          <rect x="766" y="305" width="168" height="17" class="lbl-bg"/>
+          <text x="850" y="317" text-anchor="middle" class="c-ca semibold" font-size="10.5">sign w/ CA's PRIVATE KEY</text>
+
+          <!-- ============ OUTPUT: col1 = two separate files ============ -->
+          <rect x="40" y="345" width="300" height="45" rx="7" class="box-surface"/>
+          <text x="190" y="363" text-anchor="middle" class="ink semibold mono" font-size="13">firmware.bin</text>
+          <text x="190" y="378" text-anchor="middle" class="muted" font-size="9.5">unchanged original file</text>
+
+          <line x1="190" y1="390" x2="190" y2="405" class="line-dash"/>
+          <rect x="105" y="393" width="170" height="16" class="lbl-bg"/>
+          <text x="190" y="405" text-anchor="middle" class="muted" font-size="9.5">kept separate — two files</text>
+
+          <rect x="40" y="405" width="300" height="45" rx="7" class="box-sign"/>
+          <text x="190" y="423" text-anchor="middle" class="c-sign bold mono" font-size="13">firmware.sig</text>
+          <text x="190" y="438" text-anchor="middle" class="muted" font-size="9.5">the signature, alone</text>
+
+          <!-- ============ OUTPUT: col2 = one file, signature embedded ============ -->
+          <rect x="370" y="345" width="300" height="55" class="box-surface"/>
+          <text x="520" y="365" text-anchor="middle" class="ink semibold mono" font-size="13">firmware.csr</text>
+          <text x="520" y="383" text-anchor="middle" class="muted" font-size="9.5">subject + public key (unchanged)</text>
+          <rect x="370" y="400" width="300" height="50" class="box-sign"/>
+          <text x="520" y="422" text-anchor="middle" class="c-sign bold" font-size="11">SIGNATURE</text>
+          <text x="520" y="438" text-anchor="middle" class="muted" font-size="9.5">embedded in the same file</text>
+          <rect x="370" y="345" width="300" height="105" rx="7" fill="none" class="box-surface" style="fill:none;"/>
+
+          <!-- ============ OUTPUT: col3 = one file, CA signature embedded ============ -->
+          <rect x="700" y="345" width="300" height="55" class="box-surface"/>
+          <text x="850" y="365" text-anchor="middle" class="ink semibold mono" font-size="13">firmware.crt</text>
+          <text x="850" y="383" text-anchor="middle" class="muted" font-size="9.5">issuer + subject + public key</text>
+          <rect x="700" y="400" width="300" height="50" class="box-ca"/>
+          <text x="850" y="422" text-anchor="middle" class="c-ca bold" font-size="11">SIGNATURE (CA's key)</text>
+          <text x="850" y="438" text-anchor="middle" class="muted" font-size="9.5">embedded in the same file</text>
+          <rect x="700" y="345" width="300" height="105" rx="7" fill="none" class="box-surface" style="fill:none;"/>
+
+          <!-- ============ ARROW 3: verify, converging to one diamond ============ -->
+          <text x="190" y="468" text-anchor="middle" class="c-verify semibold mono" font-size="10.5">verify w/ public.pem</text>
+          <text x="520" y="468" text-anchor="middle" class="c-verify semibold mono" font-size="10.5">verify w/ public.pem</text>
+          <text x="850" y="468" text-anchor="middle" class="c-verify semibold mono" font-size="10.5">verify w/ ca.crt</text>
+
+          <line x1="190" y1="476" x2="430" y2="555" class="line-verify" marker-end="url(#arV)"/>
+          <line x1="520" y1="476" x2="520" y2="505" class="line-verify" marker-end="url(#arV)"/>
+          <line x1="850" y1="476" x2="610" y2="555" class="line-verify" marker-end="url(#arV)"/>
+
+          <!-- diamond -->
+          <polygon points="520,505 610,555 520,605 430,555" class="box-surface2" stroke-width="1.6"/>
+          <text x="520" y="549" text-anchor="middle" class="ink semibold" font-size="11">hash(data) ==</text>
+          <text x="520" y="565" text-anchor="middle" class="ink semibold" font-size="11">hash from signature?</text>
+
+          <!-- outcomes -->
+          <line x1="470" y1="590" x2="420" y2="635" class="line-verify" marker-end="url(#arV)"/>
+          <text x="400" y="655" text-anchor="middle" class="c-verify bold" font-size="13">✓ VALID</text>
+          <text x="400" y="671" text-anchor="middle" class="muted" font-size="10">same data, right key</text>
+
+          <line x1="570" y1="590" x2="620" y2="635" class="line-neutral" marker-end="url(#arN)"/>
+          <text x="640" y="655" text-anchor="middle" class="ink bold" font-size="13">✕ INVALID</text>
+          <text x="640" y="671" text-anchor="middle" class="muted" font-size="10">tampered, or wrong key</text>
+
+        </svg>
+      </div>
+      <figcaption>All three pipelines hash their data the same way — the differences are <em>whose</em> private key signs (crimson = the subject's own key, gold = the CA's key) and whether the output is a separate <code>.sig</code> file or a signature field embedded in the same document. Every path still converges on the same check: does the hash of the data match the hash recovered from the signature?</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>2 — mTLS: the private key, live</h2>
+    <p class="section-intro">The CA is not on the call. It already finished its job offline, once, when it signed the CSR. During the actual connection, <strong>the TLS server</strong> checks the client — using a copy of the CA's certificate it already has in its trust store.</p>
+
+    <figure>
+      <div class="figure-frame">
+        <svg viewBox="0 0 1040 740" role="img" aria-label="Sequence diagram of an mTLS handshake. An issuance phase happens once, offline, before any connection: the client sends a CSR signed with its own private key to the CA, and the CA returns a certificate signed with the CA's private key. Later, during the live handshake, the server requests a client certificate, the client sends its certificate and a CertificateVerify message signing the handshake transcript with its private key, and the server verifies that signature against the public key embedded in the client's certificate.">
+
+          <defs>
+            <marker id="bN" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-muted)"/>
+            </marker>
+            <marker id="bS" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--sign)"/>
+            </marker>
+            <marker id="bC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--ca)"/>
+            </marker>
+          </defs>
+
+          <!-- issuance panel -->
+          <rect x="40" y="26" width="1000" height="150" rx="10" class="box-surface2" stroke-dasharray="5,4"/>
+          <text x="58" y="48" class="muted mono bold" font-size="10.5" letter-spacing="0.06em">ISSUANCE — OFFLINE, ONCE, BEFORE ANY CONNECTION</text>
+
+          <text x="160" y="80" text-anchor="middle" class="ink bold" font-size="12.5">CLIENT</text>
+          <text x="880" y="80" text-anchor="middle" class="ink bold" font-size="12.5">CA</text>
+
+          <line x1="230" y1="100" x2="790" y2="100" class="line-sign" marker-end="url(#bS)"/>
+          <rect x="398" y="83" width="244" height="17" class="lbl-bg"/>
+          <text x="520" y="95" text-anchor="middle" class="c-sign semibold mono" font-size="10.5">① CSR — signed w/ own PRIVATE KEY</text>
+
+          <line x1="790" y1="148" x2="230" y2="148" class="line-ca" marker-end="url(#bC)"/>
+          <rect x="378" y="131" width="284" height="17" class="lbl-bg"/>
+          <text x="520" y="143" text-anchor="middle" class="c-ca semibold mono" font-size="10.5">② Certificate — signed w/ CA's PRIVATE KEY</text>
+
+          <text x="520" y="205" text-anchor="middle" class="muted" font-size="12" font-style="italic">— later, a connection happens —</text>
+
+          <!-- lifelines -->
+          <text x="220" y="240" text-anchor="middle" class="ink bold" font-size="13">CLIENT</text>
+          <text x="220" y="255" text-anchor="middle" class="muted mono" font-size="9.5">firmware.crt + private.pem</text>
+          <text x="820" y="240" text-anchor="middle" class="ink bold" font-size="13">SERVER</text>
+          <text x="820" y="255" text-anchor="middle" class="muted mono" font-size="9.5">trusts ca.crt</text>
+
+          <line x1="220" y1="266" x2="220" y2="700" class="line-neutral"/>
+          <line x1="820" y1="266" x2="820" y2="700" class="line-neutral"/>
+
+          <!-- row 1 -->
+          <line x1="220" y1="296" x2="820" y2="296" class="line-neutral" marker-end="url(#bN)"/>
+          <rect x="455" y="279" width="130" height="16" class="lbl-bg"/>
+          <text x="520" y="291" text-anchor="middle" class="ink mono" font-size="10.5">③ ClientHello</text>
+
+          <!-- row 2 -->
+          <line x1="820" y1="360" x2="220" y2="360" class="line-neutral" marker-end="url(#bN)"/>
+          <rect x="258" y="337" width="524" height="17" class="lbl-bg"/>
+          <text x="520" y="349" text-anchor="middle" class="ink mono" font-size="10.5">④ ServerHello + Certificate (server.crt) + CertificateRequest</text>
+
+          <!-- row 3 -->
+          <line x1="820" y1="424" x2="220" y2="424" class="line-sign" marker-end="url(#bS)"/>
+          <rect x="268" y="401" width="504" height="17" class="lbl-bg"/>
+          <text x="520" y="413" text-anchor="middle" class="c-sign semibold mono" font-size="10.5">⑤ CertificateVerify — signed w/ SERVER's own PRIVATE KEY</text>
+
+          <!-- row 4 -->
+          <line x1="220" y1="488" x2="820" y2="488" class="line-neutral" marker-end="url(#bN)"/>
+          <rect x="378" y="465" width="284" height="17" class="lbl-bg"/>
+          <text x="520" y="477" text-anchor="middle" class="ink mono" font-size="10.5">⑥ Certificate (firmware.crt)</text>
+
+          <!-- row 5 : emphasized -->
+          <line x1="220" y1="565" x2="820" y2="565" class="line-sign" stroke-width="3.4" marker-end="url(#bS)"/>
+          <rect x="190" y="538" width="660" height="19" class="lbl-bg"/>
+          <text x="520" y="552" text-anchor="middle" class="c-sign bold mono" font-size="11.5">⑦ CertificateVerify — signs the handshake transcript w/ private.pem</text>
+
+          <rect x="150" y="585" width="740" height="30" rx="6" class="box-sign"/>
+          <text x="520" y="604" text-anchor="middle" class="c-sign bold" font-size="12">THIS is where private.pem gets used — live, for this connection only</text>
+
+          <!-- row 6 -->
+          <line x1="220" y1="655" x2="820" y2="655" class="line-neutral" marker-end="url(#bN)" marker-start="url(#bN)"/>
+          <rect x="455" y="632" width="130" height="17" class="lbl-bg"/>
+          <text x="520" y="644" text-anchor="middle" class="muted mono" font-size="10.5">⑧ Finished</text>
+
+        </svg>
+      </div>
+      <figcaption>The CSR (top panel) and the certificate it produced are already settled before this connection starts. Everything below the divider happens fresh, every time: the client's <code>CertificateVerify</code> message (⑦) is the one live use of <code>private.pem</code> — it signs a hash of the handshake itself, not a file.</figcaption>
+
+      <ol class="notes">
+        <li><span class="num">1</span>The server checks <code>firmware.crt</code>'s embedded signature against a CA already in its trust store (<code>ca.crt</code>) — proving the identity claim is backed by a trusted authority.</li>
+        <li><span class="num">2</span>The server checks the <code>CertificateVerify</code> signature against the public key embedded inside <code>firmware.crt</code> — proving whoever is connecting <em>right now</em> actually holds the matching private key, not just a copy of the certificate.</li>
+      </ol>
+    </figure>
+  </section>
+
+  <footer>companion to SIGNING.md — reproduce every box above with openssl req / x509 / s_server / s_client</footer>
+
+</div>
